@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>收支系统 - 登录</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  .login-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1}
+  .login-bg::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;
+    background:linear-gradient(45deg,#667eea,#764ba2,#f093fb,#667eea);background-size:400% 400%;
+    animation:gradientShift 15s ease infinite}
+  @keyframes gradientShift{0%{transform:rotate(0deg)}50%{transform:rotate(3deg)}100%{transform:rotate(0deg)}}
+  .login-wrap{position:relative;z-index:1}
+  .sys-ver{text-align:center;font-size:12px;color:#9ca3af;margin-top:16px}
+</style>
+</head>
+<body class="login-page">
+<div class="login-bg"></div>
+<div class="login-wrap">
+  <div class="login-card">
+    <h1>📷 收支系统</h1>
+    <p style="text-align:center;color:#9ca3af;font-size:13px;margin-top:-12px;margin-bottom:24px">照相馆经营财务记录</p>
+    <div class="login-form">
+      <label>工号</label>
+      <input type="text" id="workNo" placeholder="请输入工号" autocomplete="off" autofocus>
+      <label>密码</label>
+      <input type="password" id="password" placeholder="请输入密码">
+      <div id="loginError" class="error-msg"></div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()">登 录</button>
+    </div>
+    <p class="sys-ver">默认账号: admin / 123456</p>
+  </div>
+</div>
+<script>
+async function doLogin() {
+  var workNo = document.getElementById('workNo').value.trim();
+  var password = document.getElementById('password').value.trim();
+  var errDiv = document.getElementById('loginError');
+  if (!workNo || !password) { errDiv.textContent = '\u26a0 请填写工号和密码'; return; }
+  errDiv.textContent = '';
+  try {
+    var resp = await fetch('/api/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({work_no:workNo, password:password})
+    });
+    var data = await resp.json();
+    if (resp.ok) {
+      window.location.href = '/';
+    } else {
+      errDiv.textContent = '\u274c ' + (data.error || '登录失败');
+    }
+  } catch(e) {
+    errDiv.textContent = '\u274c 网络错误，请检查服务是否启动';
+  }
+}
+document.getElementById('password').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>

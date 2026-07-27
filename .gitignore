@@ -1,0 +1,22 @@
+# 编译产物
+收支系统.exe
+
+# 数据库
+data/
+
+# 调试日志
+stdout.txt
+stderr.txt
+
+# Go
+*.exe
+*.test
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store

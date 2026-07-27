@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>收支系统</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<!-- Toast 容器 -->
+<div id="toastBox"></div>
+
+<!-- 顶部栏 -->
+<div class="topbar">
+  <span class="topbar-title">📷 照相馆收支系统</span>
+  <span class="topbar-info">
+    <span id="userName">--</span>
+    <span id="lanAddr" class="lan-addr" title="局域网地址"></span>
+    <button class="btn btn-sm" onclick="doLogout()">登出</button>
+  </span>
+</div>
+
+<div class="app-layout">
+  <!-- 侧边栏 -->
+  <nav class="sidebar">
+    <a class="nav-item active" data-page="income" onclick="navTo('income')">
+      <span class="nav-icon">🧾</span><span>快捷开单</span>
+    </a>
+    <a class="nav-item" data-page="expense" onclick="navTo('expense')">
+      <span class="nav-icon">💰</span><span>支出录入</span>
+    </a>
+    <a class="nav-item" data-page="report" onclick="navTo('report')">
+      <span class="nav-icon">📊</span><span>报表</span>
+    </a>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main class="main-content">
+
+    <!-- 页面: 快捷开单 -->
+    <div id="page-income" class="page active">
+      <div class="page-toolbar">
+        <h3>今日收入记录</h3>
+        <span class="total-badge" id="incTotal">¥0.00</span>
+        <div class="spacer"></div>
+        <input type="date" id="incDateFilter" onchange="loadTodayIncome()">
+        <button class="btn btn-primary" onclick="openIncomeModal()">+ 快捷开单</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>单号</th><th>类型</th><th>分类</th><th>金额</th><th>支付</th><th>备注</th><th>操作员</th><th>时间</th><th>操作</th></tr></thead>
+          <tbody id="incList"><tr><td colspan="9" class="empty">暂无记录</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 页面: 支出录入 -->
+    <div id="page-expense" class="page">
+      <div class="page-toolbar">
+        <h3>今日支出记录</h3>
+        <span class="total-badge" id="expTotal">¥0.00</span>
+        <div class="spacer"></div>
+        <input type="date" id="expDateFilter" onchange="loadTodayExpense()">
+        <button class="btn btn-danger" onclick="openExpenseModal()">+ 支出录入</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>分类</th><th>金额</th><th>备注</th><th>操作员</th><th>时间</th><th>操作</th></tr></thead>
+          <tbody id="expList"><tr><td colspan="6" class="empty">暂无记录</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 页面: 报表（合并日报/月报/年报） -->
+    <div id="page-report" class="page">
+      <!-- 三个子标签: 日报 | 月报 | 年报 -->
+      <div class="sub-tabs">
+        <button class="sub-tab active" onclick="switchReportTab('daily')">日报</button>
+        <button class="sub-tab" onclick="switchReportTab('monthly')">月报</button>
+        <button class="sub-tab" onclick="switchReportTab('yearly')">年报</button>
+      </div>
+
+      <!-- 日期/月份选择 + 视图切换 -->
+      <div class="page-toolbar">
+        <span id="reportDateGroup"><input type="date" id="reportDate"></span>
+        <span id="reportMonthGroup" style="display:none"><input type="month" id="reportMonth"></span>
+        <span id="reportYearGroup" style="display:none">
+          <select id="yearSelect"></select>
+        </span>
+        <button class="btn btn-primary" onclick="loadReport()">查 询</button>
+        <div class="spacer"></div>
+        <!-- 视图切换按钮 -->
+        <div class="view-toggle">
+          <button class="view-btn active" onclick="switchView('table')" title="表格">📋</button>
+          <button class="view-btn" onclick="switchView('bar')" title="柱状图">📊</button>
+          <button class="view-btn" onclick="switchView('line')" title="折线图">📈</button>
+        </div>
+      </div>
+
+      <!-- 表格视图 -->
+      <div id="reportTableView"></div>
+      <!-- 图表视图 -->
+      <div id="reportChartView" style="display:none">
+        <div class="chart-container">
+          <canvas id="reportChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== 弹窗: 快捷开单 ===== -->
+<div id="incomeModal" class="modal-overlay" onclick="closeModalBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>🧾 快捷开单</h3>
+      <button class="modal-close" onclick="closeIncomeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:span 2">
+          <label>分类 <span class="req">*</span></label>
+          <select id="incCategory"><option value="">-- 选择分类 --</option></select>
+        </div>
+        <div class="form-group">
+          <label>支付方式</label>
+          <select id="incPayMethod">
+            <option value="现金">现金</option>
+            <option value="微信">微信</option>
+            <option value="支付宝">支付宝</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>金额 (元) <span class="req">*</span></label>
+          <input type="number" id="incAmount" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>日期</label>
+          <input type="date" id="incDate">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>备注</label>
+          <input type="text" id="incNotes" placeholder="可选">
+        </div>
+      </div>
+      <div class="modal-result" id="incResult"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeIncomeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitIncome()">✔ 确认录入</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗: 支出录入 ===== -->
+<div id="expenseModal" class="modal-overlay" onclick="closeModalBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>💰 支出录入</h3>
+      <button class="modal-close" onclick="closeExpenseModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:span 2">
+          <label>分类 <span class="req">*</span></label>
+          <select id="expCategory"><option value="">-- 选择分类 --</option></select>
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>金额 (元) <span class="req">*</span></label>
+          <input type="number" id="expAmount" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>日期</label>
+          <input type="date" id="expDate">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label>备注</label>
+          <input type="text" id="expNotes" placeholder="可选（如：打印纸墨）">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeExpenseModal()">取消</button>
+      <button class="btn btn-danger" onclick="submitExpense()">✔ 确认录入</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

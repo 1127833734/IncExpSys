@@ -1,0 +1,141 @@
+/* ===== 基础重置 ===== */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;background:#f3f4f6;color:#1f2937;min-height:100vh}
+a{text-decoration:none;color:inherit}
+.spacer{flex:1}
+.req{color:#ef4444}
+
+/* ===== Toast ===== */
+#toastBox{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.15);animation:slideIn .3s ease;max-width:360px;word-break:break-all}
+.toast.success{background:#10b981}
+.toast.error{background:#ef4444}
+.toast.info{background:#3b82f6}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ===== 登录页 ===== */
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#667eea,#764ba2)}
+.login-card{background:#fff;padding:44px 36px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:400px;max-width:92vw}
+.login-card h1{text-align:center;font-size:24px;margin-bottom:32px;color:#4f46e5;font-weight:700}
+.login-form label{display:block;font-size:13px;margin-bottom:5px;color:#6b7280;font-weight:500}
+.login-form input{width:100%;padding:11px 14px;border:2px solid #e5e7eb;border-radius:8px;font-size:15px;margin-bottom:16px;outline:none;transition:border .2s}
+.login-form input:focus{border-color:#4f46e5}
+.error-msg{color:#ef4444;font-size:13px;margin-bottom:10px;min-height:20px}
+
+/* ===== 顶部栏 ===== */
+.topbar{background:#fff;padding:0 24px;height:56px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.08);position:sticky;top:0;z-index:100}
+.topbar-title{font-size:18px;font-weight:700;color:#4f46e5}
+.topbar-info{font-size:13px;color:#6b7280;display:flex;align-items:center;gap:12px}
+.lan-addr{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:12px;font-size:12px;cursor:pointer}
+
+/* ===== 整体布局 ===== */
+.app-layout{display:flex;min-height:calc(100vh - 56px)}
+
+/* ===== 侧边栏 ===== */
+.sidebar{width:180px;background:#fff;border-right:1px solid #e5e7eb;padding:8px 0;flex-shrink:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:13px 20px;font-size:14px;color:#4b5563;cursor:pointer;transition:all .15s;border-left:3px solid transparent;margin:2px 0}
+.nav-item:hover{background:#f3f4f6;color:#1f2937}
+.nav-item.active{background:#eef2ff;color:#4f46e5;border-left-color:#4f46e5;font-weight:600}
+.nav-icon{font-size:18px;width:24px;text-align:center}
+
+/* ===== 主内容区 ===== */
+.main-content{flex:1;padding:20px 24px;overflow-y:auto}
+
+/* ===== 页面切换 ===== */
+.page{display:none}
+.page.active{display:block}
+
+/* ===== 页面工具栏 ===== */
+.page-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.page-toolbar h3{font-size:17px;font-weight:600}
+.page-toolbar input[type=date],
+.page-toolbar input[type=month],
+.page-toolbar select{padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;outline:none;background:#fff}
+.page-toolbar input:focus,
+.page-toolbar select:focus{border-color:#4f46e5}
+
+/* ===== 按钮 ===== */
+.btn{padding:9px 18px;border:none;border-radius:7px;font-size:14px;cursor:pointer;font-weight:500;transition:all .15s;background:#e5e7eb;color:#374151;display:inline-flex;align-items:center;gap:4px}
+.btn:hover{filter:brightness(.95)}
+.btn-primary{background:#4f46e5;color:#fff}
+.btn-primary:hover{background:#4338ca}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-sm{padding:5px 14px;font-size:12px;background:rgba(79,70,229,.1);color:#4f46e5;font-weight:500}
+.btn-sm:hover{background:rgba(79,70,229,.2)}
+.btn-block{width:100%;padding:12px;font-size:16px;justify-content:center}
+.btn-del{padding:4px 10px;font-size:12px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:5px;cursor:pointer}
+.btn-del:hover{background:#fee2e2}
+
+/* ===== 表格 ===== */
+.table-wrap{overflow-x:auto;background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f9fafb;padding:10px 12px;text-align:left;font-weight:600;color:#4b5563;border-bottom:2px solid #e5e7eb;white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:9px 12px;border-bottom:1px solid #f3f4f6}
+tr:hover td{background:#fafbfc}
+.empty{text-align:center;color:#9ca3af;padding:28px!important;font-size:14px}
+.total-row td{font-weight:700;background:#f0f9ff;border-top:2px solid #e0e7ff}
+.total-badge{font-size:20px;font-weight:700;color:#4f46e5}
+
+/* ===== 弹窗 ===== */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:200;justify-content:center;align-items:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.25);width:520px;max-width:94vw;max-height:90vh;overflow-y:auto;animation:modalIn .25s ease}
+@keyframes modalIn{from{transform:scale(.95) translateY(-10px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid #e5e7eb}
+.modal-header h3{font-size:17px;font-weight:600}
+.modal-close{width:32px;height:32px;border:none;background:none;font-size:20px;cursor:pointer;color:#9ca3af;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:#f3f4f6;color:#374151}
+.modal-body{padding:20px 24px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:14px 24px;border-top:1px solid #e5e7eb}
+
+/* ===== 弹窗表单 ===== */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column}
+.form-group label{font-size:13px;color:#4b5563;margin-bottom:4px;font-weight:500}
+.form-group select,
+.form-group input{padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:14px;outline:none;transition:border .2s}
+.form-group select:focus,
+.form-group input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.modal-result{margin-top:12px;font-size:14px;min-height:22px;font-weight:500}
+.modal-result.success{color:#059669}
+.modal-result.error{color:#dc2626}
+
+/* ===== 报表区 ===== */
+.report-section{background:#fff;border-radius:10px;padding:18px 22px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.report-section h4{font-size:15px;font-weight:600;margin-bottom:10px;color:#374151}
+.report-section h4.sub{font-size:13px;color:#6b7280;margin-top:8px;padding-top:8px;border-top:1px dashed #e5e7eb}
+.report-table{margin-bottom:10px}
+
+/* ===== 响应式 ===== */
+@media (max-width:768px){
+  .app-layout{flex-direction:column}
+  .sidebar{width:100%;display:flex;overflow-x:auto;border-right:none;border-bottom:1px solid #e5e7eb;padding:0}
+  .nav-item{flex-shrink:0;border-left:none;border-bottom:3px solid transparent;padding:12px 14px;font-size:13px}
+  .nav-item.active{border-left-color:transparent;border-bottom-color:#4f46e5}
+  .main-content{padding:14px}
+  .form-grid{grid-template-columns:1fr}
+  .modal{max-width:98vw}
+  .page-toolbar{flex-direction:column;align-items:stretch}
+}
+
+/* ===== 报表子标签 ===== */
+.sub-tabs{display:flex;gap:0;margin-bottom:12px;border-bottom:2px solid #e5e7eb}
+.sub-tab{padding:10px 24px;border:none;background:none;font-size:14px;cursor:pointer;color:#6b7280;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s}
+.sub-tab:hover{color:#4f46e5}
+.sub-tab.active{color:#4f46e5;border-bottom-color:#4f46e5;font-weight:600}
+
+/* ===== 视图切换按钮 ===== */
+.view-toggle{display:flex;gap:4px;background:#f3f4f6;border-radius:7px;padding:3px}
+.view-btn{width:34px;height:32px;border:none;background:transparent;border-radius:6px;font-size:16px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center}
+.view-btn:hover{background:#e5e7eb}
+.view-btn.active{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+/* ===== 图表容器 ===== */
+.chart-container{background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.chart-container canvas{width:100%;height:auto;display:block}
+
+/* ===== 收入类型标签 ===== */
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.tag:nth-child(1){background:#eef2ff;color:#4f46e5}
+tr:nth-child(even) .tag{background:#fef3c7;color:#92400e}
