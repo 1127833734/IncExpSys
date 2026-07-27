@@ -76,6 +76,7 @@
       <div class="table-wrap">
         <table>
           <thead><tr>
+            <th data-sort="order_no" class="sortable" onclick="toggleSort('expense','order_no')">单号 <span class="sort-arrow"></span></th>
             <th data-sort="category_name" class="sortable" onclick="toggleSort('expense','category_name')">分类 <span class="sort-arrow"></span></th>
             <th data-sort="amount" class="sortable" onclick="toggleSort('expense','amount')">金额 <span class="sort-arrow"></span></th>
             <th data-sort="notes" class="sortable" onclick="toggleSort('expense','notes')">备注 <span class="sort-arrow"></span></th>
@@ -83,7 +84,7 @@
             <th data-sort="created_at" class="sortable" onclick="toggleSort('expense','created_at')">时间 <span class="sort-arrow"></span></th>
             <th>操作</th>
           </tr></thead>
-          <tbody id="expList"><tr><td colspan="6" class="empty">暂无记录</td></tr></tbody>
+          <tbody id="expList"><tr><td colspan="7" class="empty">暂无记录</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -99,12 +100,11 @@
 
       <!-- 日期/月份选择 + 视图切换 -->
       <div class="page-toolbar">
-        <span id="reportDateGroup"><input type="date" id="reportDate"></span>
-        <span id="reportMonthGroup" style="display:none"><input type="month" id="reportMonth"></span>
+        <span id="reportDateGroup"><input type="date" id="reportDate" onchange="loadReport()"></span>
+        <span id="reportMonthGroup" style="display:none"><input type="month" id="reportMonth" onchange="loadReport()"></span>
         <span id="reportYearGroup" style="display:none">
-          <select id="yearSelect"></select>
+          <select id="yearSelect" onchange="loadReport()"></select>
         </span>
-        <button class="btn btn-primary" onclick="loadReport()">查 询</button>
         <select id="reportTypeFilter" onchange="loadReport()" style="min-width:80px">
           <option value="">全部类型</option>
           <option value="门市">门市</option>
@@ -112,6 +112,11 @@
         </select>
         <select id="reportCatFilter" onchange="loadReport()" style="min-width:100px">
           <option value="">全部分类</option>
+        </select>
+        <select id="reportInExFilter" onchange="loadReport()" style="min-width:90px">
+          <option value="">全部</option>
+          <option value="income">仅收入</option>
+          <option value="expense">仅支出</option>
         </select>
         <div class="spacer"></div>
         <!-- 视图切换按钮 -->

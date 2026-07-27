@@ -42,6 +42,7 @@ type ExpenseCategory struct {
 // ExpenseRecord 支出记录
 type ExpenseRecord struct {
 	ID           int     `json:"id"`
+	OrderNo      string  `json:"order_no"`
 	CategoryID   int     `json:"category_id"`
 	CategoryName string  `json:"category_name"`
 	Amount       float64 `json:"amount"`

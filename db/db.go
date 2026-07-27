@@ -69,6 +69,7 @@ func createTables() error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS expense_records (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			order_no TEXT DEFAULT '',
 			category_id INTEGER NOT NULL,
 			amount REAL NOT NULL DEFAULT 0,
 			record_date TEXT NOT NULL,
@@ -82,6 +83,8 @@ func createTables() error {
 			return err
 		}
 	}
+	// 旧数据库升级：添加 order_no 列（忽略"已存在"错误）
+	DB.Exec("ALTER TABLE expense_records ADD COLUMN order_no TEXT DEFAULT ''")
 	return nil
 }
 

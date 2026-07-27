@@ -2,10 +2,12 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"incomesystem/db"
 	"incomesystem/middleware"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -50,15 +52,30 @@ func CreateExpense(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := middleware.SessionFromCtx(r.Context())
+
+	// 生成支出单号
+	var lastNo string
+	db.DB.QueryRow("SELECT order_no FROM expense_records WHERE record_date=? AND order_no!='' ORDER BY id DESC LIMIT 1", req.RecordDate).Scan(&lastNo)
+	seq := 1
+	if lastNo != "" {
+		parts := strings.Split(lastNo, "-")
+		if len(parts) == 2 {
+			seq, _ = strconv.Atoi(parts[1])
+			seq++
+		}
+	}
+	dateStr := strings.ReplaceAll(req.RecordDate, "-", "")
+	orderNo := fmt.Sprintf("%s-%03d", dateStr, seq)
+
 	_, err := db.DB.Exec(
-		"INSERT INTO expense_records (category_id, amount, record_date, notes, created_by) VALUES (?,?,?,?,?)",
-		req.CategoryID, req.Amount, req.RecordDate, req.Notes, s.UserID,
+		"INSERT INTO expense_records (order_no, category_id, amount, record_date, notes, created_by) VALUES (?,?,?,?,?,?)",
+		orderNo, req.CategoryID, req.Amount, req.RecordDate, req.Notes, s.UserID,
 	)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": "录入失败"})
 		return
 	}
-	writeJSON(w, 200, map[string]string{"ok": "录入成功"})
+	writeJSON(w, 200, map[string]string{"ok": "录入成功", "order_no": orderNo})
 }
 
 // GetTodayExpense 获取今日支出记录
@@ -69,7 +86,7 @@ func GetTodayExpense(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.DB.Query(
-		`SELECT r.id, r.category_id, c.name, r.amount, r.record_date, r.notes, u.name, r.created_at
+		`SELECT r.id, r.order_no, r.category_id, c.name, r.amount, r.record_date, r.notes, u.name, r.created_at
 		 FROM expense_records r
 		 JOIN expense_categories c ON r.category_id = c.id
 		 JOIN users u ON r.created_by = u.id
@@ -86,7 +103,7 @@ func GetTodayExpense(w http.ResponseWriter, r *http.Request) {
 	var records []db.ExpenseRecord
 	for rows.Next() {
 		var rec db.ExpenseRecord
-		rows.Scan(&rec.ID, &rec.CategoryID, &rec.CategoryName, &rec.Amount, &rec.RecordDate, &rec.Notes, &rec.CreatedBy, &rec.CreatedAt)
+		rows.Scan(&rec.ID, &rec.OrderNo, &rec.CategoryID, &rec.CategoryName, &rec.Amount, &rec.RecordDate, &rec.Notes, &rec.CreatedBy, &rec.CreatedAt)
 		records = append(records, rec)
 	}
 	if records == nil {

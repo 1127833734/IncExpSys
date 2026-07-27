@@ -165,6 +165,14 @@ async function init() {
     });
   }
 
+  // 报表分类筛选下拉
+  var catSel = document.getElementById('reportCatFilter');
+  if (catSel && allIncomeCategories.length > 0) {
+    allIncomeCategories.forEach(function(c){
+      catSel.innerHTML += '<option value="'+c.id+'">'+c.name+'</option>';
+    });
+  }
+
   loadTodayIncome();
   loadTodayExpense();
 
@@ -341,6 +349,7 @@ function renderExpenseTable() {
   }
   tbody.innerHTML = records.map(function(r){
     return '<tr>'+
+      '<td><b>'+(r.order_no||'---')+'</b></td>'+
       '<td>'+r.category_name+'</td>'+
       '<td>'+fmtMoney(r.amount)+'</td>'+
       '<td>'+r.notes+'</td>'+
@@ -390,6 +399,7 @@ function switchView(view) {
     document.getElementById('reportTableView').style.display = 'none';
     document.getElementById('reportChartView').style.display = '';
     if (lastReportData) renderChart(lastReportData, view);
+    else loadReport();
   }
 }
 
@@ -439,8 +449,12 @@ async function loadReport() {
 
 // ===== 表格渲染 =====
 function renderReportTable(tab, data) {
+  var inEx = document.getElementById('reportInExFilter') ? document.getElementById('reportInExFilter').value : '';
+  var showIncome = inEx !== 'expense';
+  var showExpense = inEx !== 'income';
   var html = '';
   if (tab === 'daily') {
+    if (showIncome) {
     html += '<div class="report-section"><h4>\uD83D\uDCE5 收入合计: '+fmtMoney(data.income_total)+'</h4>';
     (data.income||[]).forEach(function(g){
       html += '<h4 class="sub">'+g.type+'</h4><table class="report-table"><thead><tr><th>分类</th><th>金额</th></tr></thead><tbody>';
@@ -449,6 +463,8 @@ function renderReportTable(tab, data) {
     });
     if ((data.income||[]).length===0) html += '<p style="color:#9ca3af;padding:8px;">当日无收入记录</p>';
     html += '</div>';
+    }
+    if (showExpense) {
     html += '<div class="report-section"><h4>\uD83D\uDCE4 支出合计: '+fmtMoney(data.expense_total)+'</h4>';
     if ((data.expense||[]).length > 0) {
       html += '<table class="report-table"><thead><tr><th>分类</th><th>金额</th></tr></thead><tbody>';
@@ -456,23 +472,48 @@ function renderReportTable(tab, data) {
       html += '</tbody></table>';
     } else { html += '<p style="color:#9ca3af;padding:8px;">当日无支出记录</p>'; }
     html += '</div>';
+    }
+    if (showIncome && showExpense) {
     html += '<div class="report-section"><strong>当日结余: '+fmtMoney(data.income_total - data.expense_total)+'</strong></div>';
+    }
   } else if (tab === 'monthly') {
     html += '<div class="report-section"><h4>\uD83D\uDCC5 月报表</h4>';
-    html += '<table class="report-table"><thead><tr><th>日期</th><th>收入</th><th>支出</th><th>结余</th></tr></thead><tbody>';
+    html += '<table class="report-table"><thead><tr><th>日期</th>';
+    if (showIncome) html += '<th>收入</th>';
+    if (showExpense) html += '<th>支出</th>';
+    if (showIncome && showExpense) html += '<th>结余</th>';
+    html += '</tr></thead><tbody>';
     (data.days||[]).forEach(function(d){
-      html += '<tr><td>'+d.date+'</td><td>'+fmtMoney(d.income)+'</td><td>'+fmtMoney(d.expense)+'</td><td>'+fmtMoney(d.income-d.expense)+'</td></tr>';
+      html += '<tr><td>'+d.date+'</td>';
+      if (showIncome) html += '<td>'+fmtMoney(d.income)+'</td>';
+      if (showExpense) html += '<td>'+fmtMoney(d.expense)+'</td>';
+      if (showIncome && showExpense) html += '<td>'+fmtMoney(d.income-d.expense)+'</td>';
+      html += '</tr>';
     });
-    html += '<tr class="total-row"><td>月合计</td><td>'+fmtMoney(data.month_income_total)+'</td><td>'+fmtMoney(data.month_expense_total)+'</td><td>'+fmtMoney(data.month_income_total-data.month_expense_total)+'</td></tr>';
-    html += '</tbody></table></div>';
+    html += '<tr class="total-row"><td>月合计</td>';
+    if (showIncome) html += '<td>'+fmtMoney(data.month_income_total)+'</td>';
+    if (showExpense) html += '<td>'+fmtMoney(data.month_expense_total)+'</td>';
+    if (showIncome && showExpense) html += '<td>'+fmtMoney(data.month_income_total-data.month_expense_total)+'</td>';
+    html += '</tr></tbody></table></div>';
   } else {
     html += '<div class="report-section"><h4>\uD83D\uDCC8 年度报表</h4>';
-    html += '<table class="report-table"><thead><tr><th>月份</th><th>收入</th><th>支出</th><th>结余</th></tr></thead><tbody>';
+    html += '<table class="report-table"><thead><tr><th>月份</th>';
+    if (showIncome) html += '<th>收入</th>';
+    if (showExpense) html += '<th>支出</th>';
+    if (showIncome && showExpense) html += '<th>结余</th>';
+    html += '</tr></thead><tbody>';
     (data.months||[]).forEach(function(m){
-      html += '<tr><td>'+m.month+'月</td><td>'+fmtMoney(m.income)+'</td><td>'+fmtMoney(m.expense)+'</td><td>'+fmtMoney(m.income-m.expense)+'</td></tr>';
+      html += '<tr><td>'+m.month+'月</td>';
+      if (showIncome) html += '<td>'+fmtMoney(m.income)+'</td>';
+      if (showExpense) html += '<td>'+fmtMoney(m.expense)+'</td>';
+      if (showIncome && showExpense) html += '<td>'+fmtMoney(m.income-m.expense)+'</td>';
+      html += '</tr>';
     });
-    html += '<tr class="total-row"><td>年合计</td><td>'+fmtMoney(data.year_income_total)+'</td><td>'+fmtMoney(data.year_expense_total)+'</td><td>'+fmtMoney(data.year_income_total-data.year_expense_total)+'</td></tr>';
-    html += '</tbody></table></div>';
+    html += '<tr class="total-row"><td>年合计</td>';
+    if (showIncome) html += '<td>'+fmtMoney(data.year_income_total)+'</td>';
+    if (showExpense) html += '<td>'+fmtMoney(data.year_expense_total)+'</td>';
+    if (showIncome && showExpense) html += '<td>'+fmtMoney(data.year_income_total-data.year_expense_total)+'</td>';
+    html += '</tr></tbody></table></div>';
   }
   document.getElementById('reportTableView').innerHTML = html;
 }
@@ -690,14 +731,17 @@ function drawLinesV2(ctx, W, H, labels, incomes, expenses) {
 
 // ===== 饼状图 =====
 function drawPie(ctx, W, H, data, tab) {
-  var items = []; // { name, value, color }
-  var incTotal = data.income_total || 0;
-  var expTotal = data.expense_total || 0;
+  var items = [];
+  var incTotal = 0, expTotal = 0;
+  if (tab === 'daily') { incTotal = data.income_total || 0; expTotal = data.expense_total || 0; }
+  else if (tab === 'monthly') { incTotal = data.month_income_total || 0; expTotal = data.month_expense_total || 0; }
+  else { incTotal = data.year_income_total || 0; expTotal = data.year_expense_total || 0; }
 
   // 收支混合饼图
   if (incTotal > 0) items.push({ name: '收入', value: incTotal, color: '#4f46e5' });
   if (expTotal > 0) items.push({ name: '支出', value: expTotal, color: '#ef4444' });
-  if (incTotal > 0) items.push({ name: '结余', value: Math.max(0, incTotal - expTotal), color: '#10b981' });
+  var balance = incTotal - expTotal;
+  items.push({ name: '结余', value: balance >= 0 ? balance : 0, color: '#10b981' });
 
   if (items.length === 0) {
     ctx.fillStyle = '#9ca3af';
