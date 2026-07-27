@@ -157,6 +157,14 @@ async function init() {
     }
   }
 
+  // 报表分类筛选下拉
+  var catSel = document.getElementById('reportCatFilter');
+  if (catSel && allIncomeCategories.length > 0) {
+    allIncomeCategories.forEach(function(c){
+      catSel.innerHTML += '<option value="'+c.id+'">'+c.name+'</option>';
+    });
+  }
+
   loadTodayIncome();
   loadTodayExpense();
 
@@ -386,33 +394,42 @@ function switchView(view) {
 }
 
 // ===== 加载报表数据 =====
+function getReportFilterParams() {
+  var params = '';
+  var type = document.getElementById('reportTypeFilter').value;
+  var cat = document.getElementById('reportCatFilter').value;
+  if (type) params += '&type=' + encodeURIComponent(type);
+  if (cat) params += '&category_id=' + encodeURIComponent(cat);
+  return params;
+}
+
 async function loadReport() {
   var tab = currentReportTab;
+  var filter = getReportFilterParams();
   try {
     var data;
     if (tab === 'daily') {
       var date = document.getElementById('reportDate').value;
       if (!date) { toast('请选择日期', 'error'); return; }
-      data = await api('/api/report/daily?date='+date, 'GET');
+      data = await api('/api/report/daily?date='+date+filter, 'GET');
     } else if (tab === 'monthly') {
       var month = document.getElementById('reportMonth').value;
       if (!month) { toast('请选择月份', 'error'); return; }
       var parts = month.split('-');
-      data = await api('/api/report/monthly?year='+parts[0]+'&month='+parts[1], 'GET');
+      data = await api('/api/report/monthly?year='+parts[0]+'&month='+parts[1]+filter, 'GET');
     } else {
       var year = document.getElementById('yearSelect').value;
       if (!year) { toast('请选择年份', 'error'); return; }
-      data = await api('/api/report/yearly?year='+year, 'GET');
+      data = await api('/api/report/yearly?year='+year+filter, 'GET');
     }
     lastReportData = { tab: tab, data: data };
 
-    // 根据当前视图渲染
     if (currentView === 'table') {
       renderReportTable(tab, data);
       document.getElementById('reportTableView').style.display = '';
       document.getElementById('reportChartView').style.display = 'none';
     } else {
-      renderReportTable(tab, data); // 仍然渲染表格（可能在 chart view 下面或备用）
+      renderReportTable(tab, data);
       document.getElementById('reportTableView').style.display = 'none';
       document.getElementById('reportChartView').style.display = '';
       renderChart(data, currentView);
@@ -467,22 +484,15 @@ function renderChart(data, viewType) {
   var ctx = canvas.getContext('2d');
   var tab = currentReportTab;
 
-  // 设置 canvas 尺寸
   var container = canvas.parentElement;
   canvas.width = Math.max(560, container.clientWidth - 20);
-  canvas.height = 360;
+  canvas.height = 380;
   var W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
 
-  // 边距
-  var pad = { top: 30, right: 30, bottom: 60, left: 70 };
-  var pw = W - pad.left - pad.right;
-  var ph = H - pad.top - pad.bottom;
-
-  // 解析数据为标签和数据集
+  // 解析数据
   var labels = [], incomes = [], expenses = [];
   if (tab === 'daily') {
-    // 日报：按分类汇总（收入+支出混排）
     (data.income||[]).forEach(function(g){
       (g.categories||[]).forEach(function(c){
         labels.push(c.name); incomes.push(c.total); expenses.push(0);
@@ -493,7 +503,7 @@ function renderChart(data, viewType) {
     });
   } else if (tab === 'monthly') {
     (data.days||[]).forEach(function(d){
-      labels.push(d.date.substring(5)); // MM-DD
+      labels.push(d.date.substring(5));
       incomes.push(d.income); expenses.push(d.expense);
     });
   } else {
@@ -511,121 +521,229 @@ function renderChart(data, viewType) {
     return;
   }
 
-  // 计算最大值
-  var maxVal = 0;
-  for (var i = 0; i < incomes.length; i++) {
-    if (incomes[i] > maxVal) maxVal = incomes[i];
-    if (expenses[i] > maxVal) maxVal = expenses[i];
+  if (viewType === 'pie') {
+    drawPie(ctx, W, H, data, tab);
+  } else if (viewType === 'bar') {
+    drawBarsV2(ctx, W, H, labels, incomes, expenses);
+  } else {
+    drawLinesV2(ctx, W, H, labels, incomes, expenses);
   }
-  if (maxVal === 0) maxVal = 10;
-  var yMax = Math.ceil(maxVal * 1.2);
+}
+
+// ===== 柱状图 V2：收入向上、支出向下（双Y轴独立刻度）=====
+function drawBarsV2(ctx, W, H, labels, incomes, expenses) {
+  var pad = { top: 20, right: 60, bottom: 60, left: 60 };
+  var midY = H / 2; // 中间基线
+  var pw = W - pad.left - pad.right;
+
+  // 计算收入/支出各自的最大值
+  var maxInc = 0, maxExp = 0;
+  for (var i = 0; i < incomes.length; i++) {
+    if (incomes[i] > maxInc) maxInc = incomes[i];
+    if (expenses[i] > maxExp) maxExp = expenses[i];
+  }
+  if (maxInc === 0) maxInc = 10;
+  if (maxExp === 0) maxExp = 10;
+  var incMax = Math.ceil(maxInc * 1.15);
+  var expMax = Math.ceil(maxExp * 1.15);
+  var incH = midY - pad.top - 10;   // 收入区域高度
+  var expH = H - midY - pad.bottom; // 支出区域高度
 
   var barCount = labels.length;
-  var groupWidth = pw / barCount;
+  var groupW = pw / barCount;
+  var barW = Math.min(groupW * 0.5, 50);
 
-  // 绘制背景网格
-  ctx.strokeStyle = '#e5e7eb';
-  ctx.lineWidth = 1;
-  var gridLines = 5;
-  for (var g = 0; g <= gridLines; g++) {
-    var y = pad.top + (ph / gridLines) * g;
-    ctx.beginPath();
-    ctx.moveTo(pad.left, y);
-    ctx.lineTo(W - pad.right, y);
-    ctx.stroke();
-    // Y 轴标签
-    var val = yMax - (yMax / gridLines) * g;
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '11px "Microsoft YaHei",sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(fmtMoney(val), pad.left - 6, y + 4);
+  // 网格——收入区
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+  for (var g = 0; g <= 4; g++) {
+    var y = pad.top + (incH / 4) * g;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    var val = incMax - (incMax / 4) * g;
+    ctx.fillStyle = '#4f46e5'; ctx.font = '10px "Microsoft YaHei",sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(fmtMoney(val), pad.left - 4, y + 3);
+  }
+  // 网格——支出区
+  for (var g2 = 1; g2 <= 4; g2++) {
+    var y2 = midY + (expH / 4) * g2;
+    ctx.beginPath(); ctx.moveTo(pad.left, y2); ctx.lineTo(W - pad.right, y2); ctx.stroke();
+    var val2 = (expMax / 4) * g2;
+    ctx.fillStyle = '#ef4444'; ctx.font = '10px "Microsoft YaHei",sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(fmtMoney(val2), pad.left - 4, y2 + 3);
   }
 
-  // 绘制 X 轴标签
-  ctx.fillStyle = '#374151';
-  ctx.font = '11px "Microsoft YaHei",sans-serif';
-  ctx.textAlign = 'center';
+  // 基线
+  ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad.left, midY); ctx.lineTo(W - pad.right, midY); ctx.stroke();
+
+  // X轴标签
+  ctx.fillStyle = '#374151'; ctx.font = '11px "Microsoft YaHei",sans-serif'; ctx.textAlign = 'center';
   for (var i = 0; i < barCount; i++) {
-    var x = pad.left + groupWidth * i + groupWidth / 2;
-    var y = H - pad.bottom + 18;
-    ctx.save();
-    ctx.translate(x, y);
-    if (labels[i].length > 4) {
-      ctx.rotate(-0.5);
-    }
+    var x = pad.left + groupW * i + groupW / 2;
+    ctx.save(); ctx.translate(x, H - pad.bottom + 16);
+    if (labels[i].length > 4) ctx.rotate(-0.5);
     ctx.fillText(labels[i], 0, 0);
     ctx.restore();
   }
 
-  if (viewType === 'bar') {
-    drawBars(ctx, pad, groupWidth, barCount, ph, yMax, incomes, expenses);
-  } else {
-    drawLines(ctx, pad, groupWidth, barCount, ph, yMax, incomes, expenses);
+  // 画柱子
+  for (var i2 = 0; i2 < barCount; i2++) {
+    var cx = pad.left + groupW * i2 + groupW / 2;
+    // 收入向上
+    var ih = incMax > 0 ? (incomes[i2] / incMax) * incH : 0;
+    if (ih > 0) {
+      ctx.fillStyle = '#4f46e5';
+      ctx.fillRect(cx - barW / 2, midY - ih, barW, ih);
+    }
+    // 支出向下
+    var eh = expMax > 0 ? (expenses[i2] / expMax) * expH : 0;
+    if (eh > 0) {
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(cx - barW / 2, midY + 1, barW, eh);
+    }
   }
 
   // 图例
-  var legendX = W - pad.right - 120;
-  var legendY = 8;
-  ctx.fillStyle = '#4f46e5';
-  ctx.fillRect(legendX, legendY, 14, 14);
+  ctx.fillStyle = '#4f46e5'; ctx.fillRect(W - pad.right + 10, 16, 12, 12);
+  ctx.fillStyle = '#374151'; ctx.font = '11px "Microsoft YaHei",sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('收入', W - pad.right + 26, 27);
+  ctx.fillStyle = '#ef4444'; ctx.fillRect(W - pad.right + 10, 36, 12, 12);
   ctx.fillStyle = '#374151';
-  ctx.font = '12px "Microsoft YaHei",sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('收入', legendX + 18, legendY + 12);
-  ctx.fillStyle = '#ef4444';
-  ctx.fillRect(legendX + 60, legendY, 14, 14);
-  ctx.fillStyle = '#374151';
-  ctx.fillText('支出', legendX + 78, legendY + 12);
+  ctx.fillText('支出', W - pad.right + 26, 47);
 }
 
-function drawBars(ctx, pad, groupWidth, barCount, ph, yMax, incomes, expenses) {
-  var barW = Math.min(groupWidth * 0.35, 40);
-  for (var i = 0; i < barCount; i++) {
-    var cx = pad.left + groupWidth * i + groupWidth / 2;
-    // 收入柱
-    var ih = (incomes[i] / yMax) * ph;
-    if (ih > 0) {
-      ctx.fillStyle = '#4f46e5';
-      ctx.fillRect(cx - barW - 2, pad.top + ph - ih, barW, ih);
-    }
-    // 支出柱
-    var eh = (expenses[i] / yMax) * ph;
-    if (eh > 0) {
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(cx + 2, pad.top + ph - eh, barW, eh);
-    }
+// ===== 折线图 V2：双尺度 =====
+function drawLinesV2(ctx, W, H, labels, incomes, expenses) {
+  var pad = { top: 20, right: 60, bottom: 60, left: 60 };
+  var midY = H / 2;
+  var pw = W - pad.left - pad.right;
+
+  var maxInc = 0, maxExp = 0;
+  for (var i = 0; i < incomes.length; i++) {
+    if (incomes[i] > maxInc) maxInc = incomes[i];
+    if (expenses[i] > maxExp) maxExp = expenses[i];
   }
-}
+  if (maxInc === 0) maxInc = 10;
+  if (maxExp === 0) maxExp = 10;
+  var incMax = Math.ceil(maxInc * 1.15);
+  var expMax = Math.ceil(maxExp * 1.15);
+  var incH = midY - pad.top - 10;
+  var expH = H - midY - pad.bottom;
 
-function drawLines(ctx, pad, groupWidth, barCount, ph, yMax, incomes, expenses) {
-  function drawLine(vals, color) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
+  var barCount = labels.length;
+  var groupW = pw / barCount;
+
+  // 网格
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+  for (var g = 0; g <= 4; g++) {
+    var y = pad.top + (incH / 4) * g;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.fillStyle = '#4f46e5'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(fmtMoney(incMax - (incMax / 4) * g), pad.left - 4, y + 3);
+  }
+  for (var g2 = 1; g2 <= 4; g2++) {
+    var y2 = midY + (expH / 4) * g2;
+    ctx.beginPath(); ctx.moveTo(pad.left, y2); ctx.lineTo(W - pad.right, y2); ctx.stroke();
+    ctx.fillStyle = '#ef4444'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(fmtMoney((expMax / 4) * g2), pad.left - 4, y2 + 3);
+  }
+  ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad.left, midY); ctx.lineTo(W - pad.right, midY); ctx.stroke();
+
+  // X轴
+  ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+  for (var i = 0; i < barCount; i++) {
+    var x = pad.left + groupW * i + groupW / 2;
+    ctx.save(); ctx.translate(x, H - pad.bottom + 16);
+    if (labels[i].length > 4) ctx.rotate(-0.5);
+    ctx.fillText(labels[i], 0, 0);
+    ctx.restore();
+  }
+
+  function drawLineV2(vals, max, areaH, color, baseY, dir) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.beginPath();
     var first = true;
     for (var i = 0; i < vals.length; i++) {
-      var x = pad.left + groupWidth * i + groupWidth / 2;
-      var y = pad.top + ph - (vals[i] / yMax) * ph;
+      var x = pad.left + groupW * i + groupW / 2;
+      var y = baseY + dir * (max > 0 ? (vals[i] / max) * areaH : 0);
       if (first) { ctx.moveTo(x, y); first = false; }
-      else { ctx.lineTo(x, y); }
+      else ctx.lineTo(x, y);
     }
     ctx.stroke();
-    // 画点
-    for (var i = 0; i < vals.length; i++) {
-      var x = pad.left + groupWidth * i + groupWidth / 2;
-      var y = pad.top + ph - (vals[i] / yMax) * ph;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(x, y, 2, 0, Math.PI * 2);
-      ctx.fill();
+    for (var j = 0; j < vals.length; j++) {
+      var x2 = pad.left + groupW * j + groupW / 2;
+      var y2 = baseY + dir * (max > 0 ? (vals[j] / max) * areaH : 0);
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x2, y2, 2, 0, Math.PI*2); ctx.fill();
     }
   }
-  drawLine(incomes, '#4f46e5');
-  drawLine(expenses, '#ef4444');
+  drawLineV2(incomes, incMax, incH, '#4f46e5', midY, -1);
+  drawLineV2(expenses, expMax, expH, '#ef4444', midY, 1);
+
+  // 图例
+  ctx.fillStyle = '#4f46e5'; ctx.fillRect(W - pad.right + 10, 16, 12, 12);
+  ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('收入', W - pad.right + 26, 27);
+  ctx.fillStyle = '#ef4444'; ctx.fillRect(W - pad.right + 10, 36, 12, 12);
+  ctx.fillStyle = '#374151';
+  ctx.fillText('支出', W - pad.right + 26, 47);
+}
+
+// ===== 饼状图 =====
+function drawPie(ctx, W, H, data, tab) {
+  var items = []; // { name, value, color }
+  var incTotal = data.income_total || 0;
+  var expTotal = data.expense_total || 0;
+
+  // 收支混合饼图
+  if (incTotal > 0) items.push({ name: '收入', value: incTotal, color: '#4f46e5' });
+  if (expTotal > 0) items.push({ name: '支出', value: expTotal, color: '#ef4444' });
+  if (incTotal > 0) items.push({ name: '结余', value: Math.max(0, incTotal - expTotal), color: '#10b981' });
+
+  if (items.length === 0) {
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '16px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('暂无数据', W/2, H/2);
+    return;
+  }
+
+  var total = 0;
+  items.forEach(function(it){ total += it.value; });
+  if (total === 0) total = 1;
+
+  var cx = W * 0.38, cy = H / 2;
+  var radius = Math.min(cx - 20, cy - 30, 130);
+
+  var startAngle = -Math.PI / 2;
+  items.forEach(function(it){
+    var sliceAngle = (it.value / total) * Math.PI * 2;
+    ctx.fillStyle = it.color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+    ctx.closePath();
+    ctx.fill();
+    // 标签
+    var midAngle = startAngle + sliceAngle / 2;
+    var lx = cx + Math.cos(midAngle) * (radius + 20);
+    var ly = cy + Math.sin(midAngle) * (radius + 20);
+    ctx.fillStyle = '#374151';
+    ctx.font = '12px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = midAngle > Math.PI/2 || midAngle < -Math.PI/2 ? 'right' : 'left';
+    ctx.fillText(it.name, lx, ly);
+    startAngle += sliceAngle;
+  });
+
+  // 右侧详情
+  var rx = W * 0.72, ry = cy - items.length * 22;
+  items.forEach(function(it, i){
+    ctx.fillStyle = it.color;
+    ctx.fillRect(rx, ry + i * 44, 14, 14);
+    ctx.fillStyle = '#374151';
+    ctx.font = '13px "Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(it.name + ': ' + fmtMoney(it.value) + ' (' + (it.value/total*100).toFixed(1) + '%)', rx + 20, ry + i * 44 + 12);
+  });
 }
 
 // ===== 弹窗关闭（点击遮罩） =====

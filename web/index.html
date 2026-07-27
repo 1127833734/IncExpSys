@@ -24,7 +24,7 @@
   <!-- 侧边栏 -->
   <nav class="sidebar">
     <a class="nav-item active" data-page="income" onclick="navTo('income')">
-      <span class="nav-icon">🧾</span><span>快捷开单</span>
+      <span class="nav-icon">🧾</span><span>收入录入</span>
     </a>
     <a class="nav-item" data-page="expense" onclick="navTo('expense')">
       <span class="nav-icon">💰</span><span>支出录入</span>
@@ -105,12 +105,21 @@
           <select id="yearSelect"></select>
         </span>
         <button class="btn btn-primary" onclick="loadReport()">查 询</button>
+        <select id="reportTypeFilter" onchange="loadReport()" style="min-width:80px">
+          <option value="">全部类型</option>
+          <option value="门市">门市</option>
+          <option value="外拍">外拍</option>
+        </select>
+        <select id="reportCatFilter" onchange="loadReport()" style="min-width:100px">
+          <option value="">全部分类</option>
+        </select>
         <div class="spacer"></div>
         <!-- 视图切换按钮 -->
         <div class="view-toggle">
           <button class="view-btn active" onclick="switchView('table')" title="表格">📋</button>
           <button class="view-btn" onclick="switchView('bar')" title="柱状图">📊</button>
           <button class="view-btn" onclick="switchView('line')" title="折线图">📈</button>
+          <button class="view-btn" onclick="switchView('pie')" title="饼状图">🥧</button>
         </div>
       </div>
 
