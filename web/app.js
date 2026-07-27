@@ -121,10 +121,10 @@ function openIncomeModal() {
   document.getElementById('incResult').textContent = '';
   document.getElementById('incResult').className = 'modal-result';
 
-  // 直接列出所有分类（optgroup 分组）
+  // 直接列出所有分类（门市/外拍 分组）
   var sel = document.getElementById('incCategory');
   sel.innerHTML = '<option value="">-- 选择分类 --</option>';
-  var groups = { '开单': [], '不开单': [], '外拍': [] };
+  var groups = { '门市': [], '外拍': [] };
   allIncomeCategories.forEach(function(c){
     if (groups[c.type]) groups[c.type].push(c);
   });

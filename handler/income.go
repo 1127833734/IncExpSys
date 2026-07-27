@@ -62,7 +62,7 @@ func CreateIncome(w http.ResponseWriter, r *http.Request) {
 	db.DB.QueryRow("SELECT type FROM income_categories WHERE id=?", req.CategoryID).Scan(&catType)
 
 	var orderNo string
-	if catType == "开单" {
+	if catType == "门市" || catType == "外拍" {
 		// 在事务中生成单号
 		tx, err := db.DB.Begin()
 		if err != nil {
