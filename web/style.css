@@ -139,3 +139,8 @@ tr:hover td{background:#fafbfc}
 .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
 .tag:nth-child(1){background:#eef2ff;color:#4f46e5}
 tr:nth-child(even) .tag{background:#fef3c7;color:#92400e}
+
+/* ===== 表格排序 ===== */
+.sortable{cursor:pointer;user-select:none}
+.sortable:hover{color:#4f46e5}
+.sort-arrow{font-size:10px;color:#9ca3af}

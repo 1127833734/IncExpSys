@@ -42,6 +42,10 @@ var allExpenseCategories = [];
 var currentReportTab = 'daily';   // 'daily' | 'monthly' | 'yearly'
 var currentView = 'table';       // 'table' | 'bar' | 'line'
 var lastReportData = null;       // 缓存最近一次报表数据用于图表切换
+var incomeSort = { col: null, dir: 'asc' };   // 收入表格排序状态
+var expenseSort = { col: null, dir: 'asc' };  // 支出表格排序状态
+var incomeCache = [];   // 收入原始数据缓存
+var expenseCache = [];  // 支出原始数据缓存
 
 // ===== 页面导航 =====
 function navTo(name) {
@@ -54,6 +58,60 @@ function navTo(name) {
   if (name === 'income') loadTodayIncome();
   if (name === 'expense') loadTodayExpense();
   if (name === 'report') loadReport();
+}
+
+// ===== 表格排序 =====
+function toggleSort(table, col) {
+  var st = table === 'income' ? incomeSort : expenseSort;
+  if (st.col === col) {
+    // 循环：asc → desc → null(默认)
+    if (st.dir === 'asc') { st.dir = 'desc'; }
+    else if (st.dir === 'desc') { st.col = null; st.dir = 'asc'; }
+  } else {
+    st.col = col;
+    st.dir = 'asc';
+  }
+  updateSortArrows(table);
+  if (table === 'income') renderIncomeTable();
+  else renderExpenseTable();
+}
+
+function applySort(records, st) {
+  if (!st.col || !records || records.length === 0) return records;
+  var sorted = records.slice();
+  var col = st.col;
+  sorted.sort(function(a, b) {
+    var va = a[col], vb = b[col];
+    if (va == null) va = '';
+    if (vb == null) vb = '';
+    // 数字比较
+    if (col === 'amount') {
+      va = parseFloat(va) || 0;
+      vb = parseFloat(vb) || 0;
+    }
+    if (va < vb) return st.dir === 'asc' ? -1 : 1;
+    if (va > vb) return st.dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return sorted;
+}
+
+function updateSortArrows(table) {
+  var st = table === 'income' ? incomeSort : expenseSort;
+  var prefix = table === 'income' ? 'inc' : 'exp';
+  var thead = document.querySelector('#page-' + table + ' thead');
+  if (!thead) return;
+  var ths = thead.querySelectorAll('th');
+  ths.forEach(function(th) {
+    var arrow = th.querySelector('.sort-arrow');
+    if (!arrow) return;
+    var col = th.getAttribute('data-sort');
+    if (col === st.col) {
+      arrow.textContent = st.dir === 'asc' ? ' ▲' : ' ▼';
+    } else {
+      arrow.textContent = '';
+    }
+  });
 }
 
 // ===== 初始化 =====
@@ -179,28 +237,38 @@ async function submitIncome() {
 
 async function loadTodayIncome() {
   var date = document.getElementById('incDateFilter').value || todayStr();
-  var tbody = document.getElementById('incList');
   try {
     var data = await api('/api/income/today?date='+date, 'GET');
     document.getElementById('incTotal').textContent = fmtMoney(data.total);
-    if (!data.records || data.records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty">暂无记录</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.records.map(function(r){
-      return '<tr>'+
-        '<td><b>'+(r.order_no||'---')+'</b></td>'+
-        '<td><span class="tag">'+r.type+'</span></td>'+
-        '<td>'+r.category_name+'</td>'+
-        '<td>'+fmtMoney(r.amount)+'</td>'+
-        '<td>'+r.payment_method+'</td>'+
-        '<td>'+r.notes+'</td>'+
-        '<td>'+r.created_by+'</td>'+
-        '<td>'+r.created_at.substring(11,19)+'</td>'+
-        '<td>'+(currentUser&&currentUser.role==='admin'? '<button class="btn-del" onclick="deleteIncome('+r.id+')">删除</button>' : '')+'</td>'+
-      '</tr>';
-    }).join('');
-  } catch(e) { tbody.innerHTML = '<tr><td colspan="9" class="empty">加载失败: '+e.message+'</td></tr>'; }
+    incomeCache = data.records || [];
+    renderIncomeTable();
+  } catch(e) {
+    incomeCache = [];
+    document.getElementById('incList').innerHTML = '<tr><td colspan="9" class="empty">加载失败: '+e.message+'</td></tr>';
+  }
+}
+
+function renderIncomeTable() {
+  var records = applySort(incomeCache, incomeSort);
+  var tbody = document.getElementById('incList');
+  updateSortArrows('income');
+  if (!records || records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">暂无记录</td></tr>';
+    return;
+  }
+  tbody.innerHTML = records.map(function(r){
+    return '<tr>'+
+      '<td><b>'+(r.order_no||'---')+'</b></td>'+
+      '<td><span class="tag">'+r.type+'</span></td>'+
+      '<td>'+r.category_name+'</td>'+
+      '<td>'+fmtMoney(r.amount)+'</td>'+
+      '<td>'+r.payment_method+'</td>'+
+      '<td>'+r.notes+'</td>'+
+      '<td>'+r.created_by+'</td>'+
+      '<td>'+r.created_at.substring(11,19)+'</td>'+
+      '<td>'+(currentUser&&currentUser.role==='admin'? '<button class="btn-del" onclick="deleteIncome('+r.id+')">删除</button>' : '')+'</td>'+
+    '</tr>';
+  }).join('');
 }
 
 async function deleteIncome(id) {
@@ -244,25 +312,35 @@ async function submitExpense() {
 
 async function loadTodayExpense() {
   var date = document.getElementById('expDateFilter').value || todayStr();
-  var tbody = document.getElementById('expList');
   try {
     var data = await api('/api/expense/today?date='+date, 'GET');
     document.getElementById('expTotal').textContent = fmtMoney(data.total);
-    if (!data.records || data.records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">暂无记录</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.records.map(function(r){
-      return '<tr>'+
-        '<td>'+r.category_name+'</td>'+
-        '<td>'+fmtMoney(r.amount)+'</td>'+
-        '<td>'+r.notes+'</td>'+
-        '<td>'+r.created_by+'</td>'+
-        '<td>'+r.created_at.substring(11,19)+'</td>'+
-        '<td>'+(currentUser&&currentUser.role==='admin'? '<button class="btn-del" onclick="deleteExpense('+r.id+')">删除</button>' : '')+'</td>'+
-      '</tr>';
-    }).join('');
-  } catch(e) { tbody.innerHTML = '<tr><td colspan="6" class="empty">加载失败: '+e.message+'</td></tr>'; }
+    expenseCache = data.records || [];
+    renderExpenseTable();
+  } catch(e) {
+    expenseCache = [];
+    document.getElementById('expList').innerHTML = '<tr><td colspan="6" class="empty">加载失败: '+e.message+'</td></tr>';
+  }
+}
+
+function renderExpenseTable() {
+  var records = applySort(expenseCache, expenseSort);
+  var tbody = document.getElementById('expList');
+  updateSortArrows('expense');
+  if (!records || records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">暂无记录</td></tr>';
+    return;
+  }
+  tbody.innerHTML = records.map(function(r){
+    return '<tr>'+
+      '<td>'+r.category_name+'</td>'+
+      '<td>'+fmtMoney(r.amount)+'</td>'+
+      '<td>'+r.notes+'</td>'+
+      '<td>'+r.created_by+'</td>'+
+      '<td>'+r.created_at.substring(11,19)+'</td>'+
+      '<td>'+(currentUser&&currentUser.role==='admin'? '<button class="btn-del" onclick="deleteExpense('+r.id+')">删除</button>' : '')+'</td>'+
+    '</tr>';
+  }).join('');
 }
 
 async function deleteExpense(id) {

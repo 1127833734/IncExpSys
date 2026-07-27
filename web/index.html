@@ -48,7 +48,17 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>单号</th><th>类型</th><th>分类</th><th>金额</th><th>支付</th><th>备注</th><th>操作员</th><th>时间</th><th>操作</th></tr></thead>
+          <thead><tr>
+            <th data-sort="order_no" class="sortable" onclick="toggleSort('income','order_no')">单号 <span class="sort-arrow"></span></th>
+            <th data-sort="type" class="sortable" onclick="toggleSort('income','type')">类型 <span class="sort-arrow"></span></th>
+            <th data-sort="category_name" class="sortable" onclick="toggleSort('income','category_name')">分类 <span class="sort-arrow"></span></th>
+            <th data-sort="amount" class="sortable" onclick="toggleSort('income','amount')">金额 <span class="sort-arrow"></span></th>
+            <th data-sort="payment_method" class="sortable" onclick="toggleSort('income','payment_method')">支付 <span class="sort-arrow"></span></th>
+            <th data-sort="notes" class="sortable" onclick="toggleSort('income','notes')">备注 <span class="sort-arrow"></span></th>
+            <th data-sort="created_by" class="sortable" onclick="toggleSort('income','created_by')">操作员 <span class="sort-arrow"></span></th>
+            <th data-sort="created_at" class="sortable" onclick="toggleSort('income','created_at')">时间 <span class="sort-arrow"></span></th>
+            <th>操作</th>
+          </tr></thead>
           <tbody id="incList"><tr><td colspan="9" class="empty">暂无记录</td></tr></tbody>
         </table>
       </div>
@@ -65,7 +75,14 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>分类</th><th>金额</th><th>备注</th><th>操作员</th><th>时间</th><th>操作</th></tr></thead>
+          <thead><tr>
+            <th data-sort="category_name" class="sortable" onclick="toggleSort('expense','category_name')">分类 <span class="sort-arrow"></span></th>
+            <th data-sort="amount" class="sortable" onclick="toggleSort('expense','amount')">金额 <span class="sort-arrow"></span></th>
+            <th data-sort="notes" class="sortable" onclick="toggleSort('expense','notes')">备注 <span class="sort-arrow"></span></th>
+            <th data-sort="created_by" class="sortable" onclick="toggleSort('expense','created_by')">操作员 <span class="sort-arrow"></span></th>
+            <th data-sort="created_at" class="sortable" onclick="toggleSort('expense','created_at')">时间 <span class="sort-arrow"></span></th>
+            <th>操作</th>
+          </tr></thead>
           <tbody id="expList"><tr><td colspan="6" class="empty">暂无记录</td></tr></tbody>
         </table>
       </div>

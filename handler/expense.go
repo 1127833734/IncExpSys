@@ -74,7 +74,7 @@ func GetTodayExpense(w http.ResponseWriter, r *http.Request) {
 		 JOIN expense_categories c ON r.category_id = c.id
 		 JOIN users u ON r.created_by = u.id
 		 WHERE r.record_date = ?
-		 ORDER BY r.id DESC`,
+		 ORDER BY r.id ASC`,
 		date,
 	)
 	if err != nil {
