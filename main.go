@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"incomesystem/db"
 	"incomesystem/handler"
@@ -14,23 +15,70 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 //go:embed web/*
 var webFS embed.FS
 
 func main() {
-	// 确定数据目录：优先 exe 所在目录下的 data/
+	var forceServer, forceClient bool
+	flag.BoolVar(&forceServer, "server", false, "强制服务端模式")
+	flag.BoolVar(&forceClient, "client", false, "强制客户端模式")
+	flag.Parse()
+
+	port := "3456"
+	if p := os.Getenv("IES_PORT"); p != "" {
+		port = p
+	}
 	exePath, _ := os.Executable()
 	dataDir := filepath.Join(filepath.Dir(exePath), "data")
 
-	// 初始化数据库
+	myIPsMap := make(map[string]bool)
+	for _, ip := range getLANIPs() {
+		myIPsMap[ip] = true
+	}
+
 	fmt.Println("正在启动收支系统...")
+
+	// 决定模式
+	runServer := !forceClient
+	var foundIP string
+	if !forceServer && !forceClient {
+		foundIP = discoverServer(port, myIPsMap)
+		if foundIP != "" { runServer = false }
+	}
+
+	if !runServer {
+		// ===== 客户端模式 =====
+		serverIP := foundIP
+		if forceClient {
+			fmt.Println("  客户端模式：搜索服务端...")
+			for {
+				serverIP = discoverServer(port, myIPsMap)
+				if serverIP != "" { break }
+				fmt.Println("  未发现服务端，3秒后重试...")
+				time.Sleep(3 * time.Second)
+			}
+		}
+		serverURL := fmt.Sprintf("http://%s:%s", serverIP, port)
+		fmt.Println()
+		fmt.Println("══════════════════════════════════════")
+		fmt.Println("  🔗 连接服务端")
+		fmt.Printf("  %s\n", serverURL)
+		fmt.Println("══════════════════════════════════════")
+		openBrowser(serverURL)
+		fmt.Println("  按 Enter 退出...")
+		fmt.Scanln()
+		return
+	}
+
+	// ===== 服务端模式 =====
+	fmt.Println("  服务端模式启动...")
 	if err := db.Init(dataDir); err != nil {
 		log.Fatalf("数据库初始化失败: %v", err)
 	}
 	defer db.Close()
-	fmt.Println("数据库连接成功")
 
 	// 创建路由
 	mux := http.NewServeMux()
@@ -76,7 +124,7 @@ func main() {
 	mux.HandleFunc("GET /api/report/yearly", middleware.RecoveryMiddleware(middleware.AuthMiddleware(handler.YearlyReport)))
 
 	// 端口
-	port := "3456"
+	port = "3456"
 	if p := os.Getenv("IES_PORT"); p != "" {
 		port = p
 	}

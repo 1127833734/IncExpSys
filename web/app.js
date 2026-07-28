@@ -518,6 +518,84 @@ function renderReportTable(tab, data) {
   document.getElementById('reportTableView').innerHTML = html;
 }
 
+// ===== 导出 CSV =====
+function exportReportCSV() {
+  if (!lastReportData) { toast('请先查询报表', 'error'); return; }
+  var tab = lastReportData.tab;
+  var data = lastReportData.data;
+  var csv = '\uFEFF';
+  var inEx = document.getElementById('reportInExFilter');
+  var showInc = !inEx || inEx.value !== 'expense';
+  var showExp = !inEx || inEx.value !== 'income';
+
+  if (tab === 'daily') {
+    csv += '类型,分类,金额\r\n';
+    if (showInc) {
+      (data.income||[]).forEach(function(g){
+        (g.categories||[]).forEach(function(c){
+          csv += g.type + ',' + c.name + ',' + c.total.toFixed(2) + '\r\n';
+        });
+      });
+    }
+    if (showExp) {
+      (data.expense||[]).forEach(function(c){
+        csv += '支出,' + c.name + ',' + c.total.toFixed(2) + '\r\n';
+      });
+    }
+    csv += ',,,\r\n收入合计,,' + (data.income_total||0).toFixed(2) + '\r\n';
+    csv += '支出合计,,' + (data.expense_total||0).toFixed(2) + '\r\n';
+    csv += '结余,,' + ((data.income_total||0)-(data.expense_total||0)).toFixed(2) + '\r\n';
+  } else if (tab === 'monthly') {
+    csv += '日期';
+    if (showInc) csv += ',收入';
+    if (showExp) csv += ',支出';
+    if (showInc && showExp) csv += ',结余';
+    csv += '\r\n';
+    (data.days||[]).forEach(function(d){
+      csv += d.date;
+      if (showInc) csv += ',' + d.income.toFixed(2);
+      if (showExp) csv += ',' + d.expense.toFixed(2);
+      if (showInc && showExp) csv += ',' + (d.income-d.expense).toFixed(2);
+      csv += '\r\n';
+    });
+    csv += '月合计';
+    if (showInc) csv += ',' + (data.month_income_total||0).toFixed(2);
+    if (showExp) csv += ',' + (data.month_expense_total||0).toFixed(2);
+    if (showInc && showExp) csv += ',' + ((data.month_income_total||0)-(data.month_expense_total||0)).toFixed(2);
+    csv += '\r\n';
+  } else {
+    csv += '月份';
+    if (showInc) csv += ',收入';
+    if (showExp) csv += ',支出';
+    if (showInc && showExp) csv += ',结余';
+    csv += '\r\n';
+    (data.months||[]).forEach(function(m){
+      csv += m.month + '月';
+      if (showInc) csv += ',' + m.income.toFixed(2);
+      if (showExp) csv += ',' + m.expense.toFixed(2);
+      if (showInc && showExp) csv += ',' + (m.income-m.expense).toFixed(2);
+      csv += '\r\n';
+    });
+    csv += '年合计';
+    if (showInc) csv += ',' + (data.year_income_total||0).toFixed(2);
+    if (showExp) csv += ',' + (data.year_expense_total||0).toFixed(2);
+    if (showInc && showExp) csv += ',' + ((data.year_income_total||0)-(data.year_expense_total||0)).toFixed(2);
+    csv += '\r\n';
+  }
+
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  var now = new Date();
+  a.download = '报表_' + tab + '_' + now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('CSV 已导出', 'success');
+}
+
 // ===== Canvas 图表渲染 =====
 function renderChart(data, viewType) {
   var canvas = document.getElementById('reportChart');
@@ -553,6 +631,11 @@ function renderChart(data, viewType) {
       incomes.push(m.income); expenses.push(m.expense);
     });
   }
+
+  // 响应收入/支出筛选
+  var inEx = document.getElementById('reportInExFilter');
+  if (inEx && inEx.value === 'income') { for (var i=0;i<expenses.length;i++) expenses[i]=0; }
+  if (inEx && inEx.value === 'expense') { for (var i=0;i<incomes.length;i++) incomes[i]=0; }
 
   if (labels.length === 0) {
     ctx.fillStyle = '#9ca3af';
@@ -802,4 +885,5 @@ async function doLogout() {
 }
 
 // 启动
+console.log('收支系统 v1.4 - 20250727b');
 init();
